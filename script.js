@@ -1,56 +1,133 @@
+const draggables = Array.from(document.querySelectorAll('.draggable'));
+const container = document.querySelector('.container');
+let zIndexCounter = 1000; // Start with a higher initial z-index value
 let currentDraggable = null; // To keep track of the currently selected image
-let zIndexCounter = 10; // Initialize z-index counter
 
-// Function to handle both mouse and touch events for dragging
-function makeDraggable(image) {
-    image.style.zIndex = zIndexCounter++; // Set initial z-index
+function getRandomPosition(element) {
+    const containerRect = container.getBoundingClientRect();
+    const maxX = containerRect.width - element.offsetWidth;
+    const maxY = containerRect.height - element.offsetHeight;
 
-    function onStart(event) {
-        currentDraggable = image;
+    const x = Math.random() * maxX;
+    const y = Math.random() * maxY;
+
+    return { x, y };
+}
+
+function randomizeAllImages() {
+    draggables.forEach(image => {
+        const { x, y } = getRandomPosition(image);
+        image.style.position = 'absolute';
+        image.style.left = `${x}px`;
+        image.style.top = `${y}px`;
+    });
+}
+
+function randomizeThreeImages() {
+    // Shuffle the images array
+    const shuffled = draggables.sort(() => 0.5 - Math.random());
+    // Get the first three elements
+    const selected = shuffled.slice(0, 3);
+
+    selected.forEach(image => {
+        const { x, y } = getRandomPosition(image);
+        image.style.position = 'absolute';
+        image.style.left = `${x}px`;
+        image.style.top = `${y}px`;
+    });
+}
+
+function copyImage() {
+    if (!currentDraggable) return;
+
+    const clone = currentDraggable.cloneNode(true);
+    const containerRect = container.getBoundingClientRect();
+    const randomPosition = getRandomPosition(clone);
+
+    clone.style.position = 'absolute';
+    clone.style.left = `${randomPosition.x}px`;
+    clone.style.top = `${randomPosition.y}px`;
+    clone.style.zIndex = zIndexCounter++; // Set a new z-index for the copied image
+
+    container.appendChild(clone);
+    draggables.push(clone); // Add the clone to the draggables array
+
+    clone.addEventListener('mousedown', (event) => {
+        if (currentDraggable) {
+            currentDraggable.classList.remove('selected'); // Remove selected class from previously selected image
+        }
+        
+        currentDraggable = clone; // Set the newly cloned image as currentDraggable
+        currentDraggable.classList.add('selected'); // Add selected class to the current image
         currentDraggable.style.cursor = 'grabbing';
-        currentDraggable.style.zIndex = ++zIndexCounter;
 
-        const isTouchEvent = event.type.startsWith('touch');
-        const startX = isTouchEvent ? event.touches[0].clientX : event.clientX;
-        const startY = isTouchEvent ? event.touches[0].clientY : event.clientY;
+        // Bring the dragged element to the front
+        currentDraggable.style.zIndex = ++zIndexCounter;
 
         // Calculate the initial offset considering the transformation
         const rect = currentDraggable.getBoundingClientRect();
-        const offsetX = startX - rect.left;
-        const offsetY = startY - rect.top;
+        const offsetX = event.clientX - rect.left;
+        const offsetY = event.clientY - rect.top;
 
-        function onMove(event) {
-            const moveX = isTouchEvent ? event.touches[0].clientX : event.clientX;
-            const moveY = isTouchEvent ? event.touches[0].clientY : event.clientY;
-
-            currentDraggable.style.left = `${moveX - offsetX}px`;
-            currentDraggable.style.top = `${moveY - offsetY}px`;
+        function onMouseMove(event) {
+            currentDraggable.style.left = `${event.clientX - offsetX}px`;
+            currentDraggable.style.top = `${event.clientY - offsetY}px`;
         }
 
-        function onEnd() {
-            if (currentDraggable) {
-                currentDraggable.style.cursor = 'grab';
-                currentDraggable = null;
-            }
-            document.removeEventListener(isTouchEvent ? 'touchmove' : 'mousemove', onMove);
-            document.removeEventListener(isTouchEvent ? 'touchend' : 'mouseup', onEnd);
+        function onMouseUp() {
+            currentDraggable.style.cursor = 'grab';
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
         }
 
-        document.addEventListener(isTouchEvent ? 'touchmove' : 'mousemove', onMove);
-        document.addEventListener(isTouchEvent ? 'touchend' : 'mouseup', onEnd);
-    }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
 
-    image.addEventListener('mousedown', onStart);
-    image.addEventListener('touchstart', onStart);
-
-    image.addEventListener('dragstart', (event) => {
+    clone.addEventListener('dragstart', (event) => {
         event.preventDefault();  // Prevent default dragging behavior
     });
 }
 
-// Initialize draggable images
-const draggables = document.querySelectorAll('.draggable');
-draggables.forEach(makeDraggable);
+draggables.forEach(draggable => {
+    draggable.style.zIndex = zIndexCounter++; // Set initial z-index
+
+    draggable.addEventListener('mousedown', (event) => {
+        if (currentDraggable) {
+            currentDraggable.classList.remove('selected'); // Remove selected class from previously selected image
+        }
+        
+        currentDraggable = draggable; // Set the currently selected image
+        currentDraggable.classList.add('selected'); // Add selected class to the current image
+        draggable.style.cursor = 'grabbing';
+
+        // Bring the dragged element to the front
+        draggable.style.zIndex = ++zIndexCounter;
+
+        // Calculate the initial offset considering the transformation
+        const rect = draggable.getBoundingClientRect();
+        const offsetX = event.clientX - rect.left;
+        const offsetY = event.clientY - rect.top;
+
+        function onMouseMove(event) {
+            draggable.style.left = `${event.clientX - offsetX}px`;
+            draggable.style.top = `${event.clientY - offsetY}px`;
+        }
+
+        function onMouseUp() {
+            draggable.style.cursor = 'grab';
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+
+    draggable.addEventListener('dragstart', (event) => {
+        event.preventDefault();  // Prevent default dragging behavior
+    });
+});
 
 // Handle the rotate button
 document.querySelector('.rotateBtn').addEventListener('click', () => {
@@ -70,21 +147,14 @@ document.querySelector('.frontBtn').addEventListener('click', () => {
 // Handle the to back button
 document.querySelector('.backBtn').addEventListener('click', () => {
     if (currentDraggable) {
-        currentDraggable.style.zIndex = --zIndexCounter;
+        let minZIndex = Math.min(...Array.from(draggables).map(d => parseInt(d.style.zIndex)));
+        currentDraggable.style.zIndex = minZIndex - 1;
     }
 });
 
-// Handle the copy button
-document.getElementById('copyBtn').addEventListener('click', () => {
-    if (currentDraggable) {
-        const clone = currentDraggable.cloneNode(true);
-        clone.style.position = 'absolute';
-        clone.style.left = `${currentDraggable.offsetLeft + 10}px`;
-        clone.style.top = `${currentDraggable.offsetTop + 10}px`;
-        clone.style.zIndex = zIndexCounter++;
-        document.querySelector('.container').appendChild(clone);
-        makeDraggable(clone);
-    }
+document.getElementById('purchaseBtn').addEventListener('click', () => {
+    alert('Your design has been saved! Proceed to purchase.');
+    // Here you would add the code to handle the purchase process
 });
 
 // Handle the save button
@@ -92,21 +162,38 @@ document.getElementById('saveBtn').addEventListener('click', () => {
     const container = document.getElementById('designContainer');
     const containerRect = container.getBoundingClientRect();
 
-    // Calculate the center area for a 1080x1080 screenshot
+    // Calculate the center of the container
     const centerX = containerRect.left + containerRect.width / 2;
     const centerY = containerRect.top + containerRect.height / 2;
-    const captureWidth = 1080;
-    const captureHeight = 1080;
+
+    // Define the capture area dimensions
+    const captureWidth = 600;
+    const captureHeight = 600;
+
+    // Calculate the top-left corner of the capture area
     const offsetX = centerX - captureWidth / 2;
     const offsetY = centerY - captureHeight / 2;
 
+    // Create a canvas element to manually crop the screenshot
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = captureWidth;
+    canvas.height = captureHeight;
+
+    // Use html2canvas to capture the entire container
     html2canvas(container, {
-        x: offsetX,
-        y: offsetY,
-        width: captureWidth,
-        height: captureHeight,
-        scale: window.devicePixelRatio // Adjust for high-DPI displays
-    }).then(canvas => {
+        scale: window.devicePixelRatio, // Adjust for high-DPI displays
+        scrollX: -window.scrollX, // Account for horizontal scrolling
+        scrollY: -window.scrollY  // Account for vertical scrolling
+    }).then(fullCanvas => {
+        // Draw the desired section onto the new canvas
+        context.drawImage(
+            fullCanvas,
+            offsetX, offsetY, captureWidth, captureHeight, // Source rect
+            0, 0, captureWidth, captureHeight // Destination rect
+        );
+
+        // Create a download link and trigger download
         const downloadLink = document.createElement('a');
         downloadLink.href = canvas.toDataURL('image/png');
         downloadLink.download = 'design_screenshot.png';
@@ -116,42 +203,20 @@ document.getElementById('saveBtn').addEventListener('click', () => {
     });
 });
 
+
 // Handle the randomize button
-document.getElementById('randomizeBtn').addEventListener('click', () => {
-    const container = document.querySelector('.container');
-    const draggables = document.querySelectorAll('.draggable');
-
-    draggables.forEach((draggable) => {
-        const containerRect = container.getBoundingClientRect();
-        const randomX = Math.random() * (containerRect.width - draggable.offsetWidth);
-        const randomY = Math.random() * (containerRect.height - draggable.offsetHeight);
-
-        draggable.style.left = `${randomX}px`;
-        draggable.style.top = `${randomY}px`;
-    });
-});
+document.getElementById('randomizeBtn').addEventListener('click', randomizeThreeImages);
 
 // Randomize all images on page load
-window.addEventListener('load', () => {
-    const container = document.querySelector('.container');
-    const draggables = document.querySelectorAll('.draggable');
-
-    draggables.forEach((draggable) => {
-        const containerRect = container.getBoundingClientRect();
-        const randomX = Math.random() * (containerRect.width - draggable.offsetWidth);
-        const randomY = Math.random() * (containerRect.height - draggable.offsetHeight);
-
-        draggable.style.left = `${randomX}px`;
-        draggable.style.top = `${randomY}px`;
-    });
-});
+window.addEventListener('load', randomizeAllImages);
 
 // Deselect image when clicking anywhere in the container
-document.querySelector('.container').addEventListener('click', (event) => {
-    if (!event.target.classList.contains('draggable')) {
-        if (currentDraggable) {
-            currentDraggable.classList.remove('selected');
-            currentDraggable = null;
-        }
+container.addEventListener('click', (event) => {
+    if (currentDraggable && !currentDraggable.contains(event.target)) {
+        currentDraggable.classList.remove('selected');
+        currentDraggable = null;
     }
 });
+
+// Handle the copy button
+document.getElementById('copyBtn').addEventListener('click', copyImage);
